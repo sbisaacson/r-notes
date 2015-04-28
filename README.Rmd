@@ -1,6 +1,5 @@
-% R notes
-% Samuel Isaacson
-% April 28, 2015
+Title: R notes
+Author: Samuel Isaacson
 
 # Introduction
 
