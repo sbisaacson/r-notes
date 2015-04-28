@@ -1,7 +1,6 @@
-Title: R notes
-Author: Samuel Isaacson
+# R notes
 
-# Introduction
+## Introduction
 
 This document is just a grab-bag of notes and gripes for R.
 
@@ -15,7 +14,7 @@ suppressPackageStartupMessages({
 })
 ```
 
-# Array permutations
+## Array permutations
 
 I can never remember which way array permutations act.
 
@@ -48,7 +47,7 @@ assert_that(all(test_array[test_indices] ==
                 test_array_perm[test_indices[, c(2, 3, 4, 1)]]))
 ```
 
-# Random number generation
+## Random number generation
 
 Use this to evaluate an expression while temporarily reseeding the
 RNG:
@@ -71,7 +70,7 @@ assert_that(
             with_seed(1000, c(rnorm(6), with_seed(1000, rnorm(3)), rnorm(3)))))
 ```
 
-# Histograms in data.table
+## Histograms in data.table
 
 I almost always use
 [`dplyr`](http://cran.rstudio.com/web/packages/dplyr/vignettes/introduction.html)
@@ -103,7 +102,7 @@ local({
 |  1.9998733|    17|
 |  2.6700717|     1|
 
-# Linear algebra
+## Linear algebra
 
 For some reason, R has `chol2inv` but not `chol2solve`.
 
@@ -118,7 +117,7 @@ assert_that(all.equal(solve(matrix(c(1, 2, 2, 5), 2, 2), c(1, 1)),
                       chol2solve(chol(matrix(c(1, 2, 2, 5), 2, 2)), c(1, 1))))
 ```
 
-# Useful miscellaneous utilities
+## Useful miscellaneous utilities
 
 When I miss MATLAB:
 
