@@ -2,6 +2,10 @@
 % Samuel Isaacson
 % April 28, 2015
 
+# Introduction
+
+This document is just a grab-bag of notes and gripes for R.
+
 
 ```r
 suppressPackageStartupMessages({
@@ -17,20 +21,32 @@ suppressPackageStartupMessages({
 I can never remember which way array permutations act.
 
 
-```
-## [1] TRUE
-```
+```r
+test_array <- array(seq_len(48), dim = c(2, 2, 4, 3))
+test_array_perm <- aperm(test_array, perm = c(2, 3, 4, 1))
 
-```
-## [1] TRUE
-```
+assert_that(all(dim(test_array_perm) == c(2, 4, 3, 2)))
 
-```
-## [1] TRUE
-```
+## Inline matrix version of expand.grid:
 
-```
-## [1] TRUE
+`%g%` <- function (m1, m2) {
+    if (is.null(dim(m1))) dim(m1) <- c(length(m1), 1)
+    if (is.null(dim(m2))) dim(m2) <- c(length(m2), 1)
+    n1 <- nrow(m1)
+    n2 <- nrow(m2)
+    cbind(m1[rep(seq_len(n1), n2), ],
+          m2[rep(seq_len(n2), each = n1), ])
+}
+
+test_indices <- 1:2 %g% 1:2 %g% 1:4 %g% 1:3
+
+assert_that(all(test_array[test_indices] == seq_len(48)))
+assert_that(test_array[1, 2, 4, 3] == test_array_perm[2, 4, 3, 1])
+
+## More generally:
+
+assert_that(all(test_array[test_indices] ==
+                test_array_perm[test_indices[, c(2, 3, 4, 1)]]))
 ```
 
 # Random number generation
@@ -39,8 +55,21 @@ Use this to evaluate an expression while temporarily reseeding the
 RNG:
 
 
-```
-## [1] TRUE
+```r
+with_seed <- function (seed, expr) {
+    save_seed <-
+        if (exists(".Random.seed", .GlobalEnv)) .Random.seed else NULL
+    on.exit(
+        if (!is.null(save_seed))
+            assign(".Random.seed", save_seed, envir = .GlobalEnv),
+        add = TRUE)
+    set.seed(seed)
+    eval(expr, envir = parent.frame())
+}
+
+assert_that(
+    all(with_seed(1000, rnorm(9)[c(1:6, 1:3, 7:9)]) ==
+            with_seed(1000, c(rnorm(6), with_seed(1000, rnorm(3)), rnorm(3)))))
 ```
 
 # Histograms in data.table
@@ -53,45 +82,42 @@ This is one task that's impossible with `dplyr`:
 
 
 ```r
-x <- data.table(z = rnorm(1000), key = "z")
-x_breaks <- data.table(z = seq(min(x$z), max(x$z), length.out = 30), key = "z")
-x_breaks[x, .(count = .N), roll = TRUE, by = z]
+local({
+    x <- data.table(z = rnorm(1000), key = "z")
+    x_breaks <- data.table(z = seq(min(x$z), max(x$z), length.out = 10), key = "z")
+    x_breaks[x, .(count = .N), roll = TRUE, by = z]
+})
 ```
 
 
 
 |          z| count|
 |----------:|-----:|
-| -3.3617135|     1|
-| -3.1537210|     1|
-| -2.9457284|     1|
-| -2.7377358|     4|
-| -2.5297432|     3|
-| -2.3217506|     6|
-| -2.1137580|    11|
-| -1.9057654|    22|
-| -1.6977728|    22|
-| -1.4897802|    41|
-| -1.2817876|    37|
-| -1.0737950|    40|
-| -0.8658024|    63|
-| -0.6578098|    70|
-| -0.4498172|    68|
-| -0.2418246|    93|
-| -0.0338321|    80|
-|  0.1741605|    78|
-|  0.3821531|    86|
-|  0.5901457|    72|
-|  0.7981383|    53|
-|  1.0061309|    37|
-|  1.2141235|    35|
-|  1.4221161|    25|
-|  1.6301087|    21|
-|  1.8381013|    17|
-|  2.0460939|     9|
-|  2.4620791|     3|
+| -3.3617135|     3|
+| -2.6915152|    17|
+| -2.0213168|    77|
+| -1.3511185|   146|
+| -0.6809201|   246|
+| -0.0107218|   262|
+|  0.6594766|   160|
+|  1.3296750|    71|
+|  1.9998733|    17|
 |  2.6700717|     1|
 
+# Linear algebra
+
+For some reason, R has `chol2inv` but not `chol2solve`.
+
+
+```r
+chol2solve <- function (R, b) {
+    assert_that(is.vector(b) || (is.matrix(b) && nrow(b) == nrow(R)))
+    backsolve(R, backsolve(R, b, transpose = TRUE))
+}
+
+assert_that(all.equal(solve(matrix(c(1, 2, 2, 5), 2, 2), c(1, 1)),
+                      chol2solve(chol(matrix(c(1, 2, 2, 5), 2, 2)), c(1, 1))))
+```
 
 # Useful miscellaneous utilities
 

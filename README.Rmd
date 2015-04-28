@@ -19,7 +19,7 @@ suppressPackageStartupMessages({
 
 I can never remember which way array permutations act.
 
-```{r array-permutation, echo = FALSE}
+```{r array-permutation, results = "hide"}
 test_array <- array(seq_len(48), dim = c(2, 2, 4, 3))
 test_array_perm <- aperm(test_array, perm = c(2, 3, 4, 1))
 
@@ -52,7 +52,7 @@ assert_that(all(test_array[test_indices] ==
 Use this to evaluate an expression while temporarily reseeding the
 RNG:
 
-```{r save-seed, echo = FALSE}
+```{r save-seed, results = "hide"}
 with_seed <- function (seed, expr) {
     save_seed <-
         if (exists(".Random.seed", .GlobalEnv)) .Random.seed else NULL
@@ -81,7 +81,7 @@ This is one task that's impossible with `dplyr`:
 ```{r data-table-histogram}
 local({
     x <- data.table(z = rnorm(1000), key = "z")
-    x_breaks <- data.table(z = seq(min(x$z), max(x$z), length.out = 30), key = "z")
+    x_breaks <- data.table(z = seq(min(x$z), max(x$z), length.out = 10), key = "z")
     x_breaks[x, .(count = .N), roll = TRUE, by = z]
 })
 ```
@@ -90,7 +90,7 @@ local({
 
 For some reason, R has `chol2inv` but not `chol2solve`.
 
-```{r cholesky}
+```{r cholesky, results = "hide"}
 chol2solve <- function (R, b) {
     assert_that(is.vector(b) || (is.matrix(b) && nrow(b) == nrow(R)))
     backsolve(R, backsolve(R, b, transpose = TRUE))
