@@ -11,7 +11,63 @@ suppressPackageStartupMessages({
     library("assertthat")
     library("printr")
     library("data.table")
+    library("dplyr")
+    library("magrittr")
 })
+```
+
+## Pitfalls
+
+R has a bewildering number of names used at startup:
+
+
+```r
+data_frame(package = c("base", "methods", "datasets", "utils",
+               "grDevices", "graphics", "stats"),
+           functions = vapply(package,
+               function (p) length(ls(paste0("package:", p))),
+               integer(1))) %>% arrange(desc(functions))
+```
+
+
+
+|package   | functions|
+|:---------|---------:|
+|base      |      1203|
+|stats     |       446|
+|methods   |       216|
+|utils     |       205|
+|grDevices |       107|
+|datasets  |       104|
+|graphics  |        87|
+
+Even so, many base R methods try to guess your intention based on the
+length or dimensions of the argument, which can lead to odd bugs.
+Compare the following invocations of `diag`:
+
+
+```r
+list(diag(3), diag(3, 4), diag(c(3, 4)))
+```
+
+```
+## [[1]]
+##      [,1] [,2] [,3]
+## [1,]    1    0    0
+## [2,]    0    1    0
+## [3,]    0    0    1
+## 
+## [[2]]
+##      [,1] [,2] [,3] [,4]
+## [1,]    3    0    0    0
+## [2,]    0    3    0    0
+## [3,]    0    0    3    0
+## [4,]    0    0    0    3
+## 
+## [[3]]
+##      [,1] [,2]
+## [1,]    3    0
+## [2,]    0    4
 ```
 
 ## Array permutations
@@ -91,16 +147,16 @@ local({
 
 |          z| count|
 |----------:|-----:|
-| -3.3617135|     3|
-| -2.6915152|    17|
-| -2.0213168|    77|
-| -1.3511185|   146|
-| -0.6809201|   246|
-| -0.0107218|   262|
-|  0.6594766|   160|
-|  1.3296750|    71|
-|  1.9998733|    17|
-|  2.6700717|     1|
+| -2.7620906|    21|
+| -2.1153593|    38|
+| -1.4686280|   146|
+| -0.8218967|   221|
+| -0.1751654|   249|
+|  0.4715658|   185|
+|  1.1182971|    93|
+|  1.7650284|    35|
+|  2.4117597|    11|
+|  3.0584910|     1|
 
 ## Linear algebra
 

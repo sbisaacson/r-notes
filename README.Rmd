@@ -10,7 +10,29 @@ suppressPackageStartupMessages({
     library("assertthat")
     library("printr")
     library("data.table")
+    library("dplyr")
+    library("magrittr")
 })
+```
+
+## Pitfalls
+
+R has a bewildering number of names used at startup:
+
+```{r list-of-functions}
+data_frame(package = c("base", "methods", "datasets", "utils",
+               "grDevices", "graphics", "stats"),
+           functions = vapply(package,
+               function (p) length(ls(paste0("package:", p))),
+               integer(1))) %>% arrange(desc(functions))
+```
+
+Even so, many base R methods try to guess your intention based on the
+length or dimensions of the argument, which can lead to odd bugs.
+Compare the following invocations of `diag`:
+
+```{r diag-pitfall}
+list(diag(3), diag(3, 4), diag(c(3, 4)))
 ```
 
 ## Array permutations
