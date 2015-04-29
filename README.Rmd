@@ -7,12 +7,13 @@ This document is just a grab-bag of notes and gripes for R.
 ```{r init}
 suppressPackageStartupMessages({
     library("knitr")
-    library("assertthat")
     library("printr")
     library("data.table")
-    library("dplyr")
+    library("dplyr")       # masks data.table::{between,last}, etc.
     library("magrittr")
-    library("tidyr")
+    library("tidyr")       # masks magrittr::extract
+    library("assertthat")
+    library("testthat")    # masks magrittr::{equals,is_less_than,not}
 })
 
 set.seed(11235)
@@ -73,7 +74,14 @@ Use `on.exit` to avoid resource leaks.
 Even though R has thousands of functions, it is missing `hypot` (which
 is
 [not trivial to implement](http://www.johndcook.com/blog/2010/06/02/whats-so-hard-about-finding-a-hypotenuse/))
-and a few other numerical niceties.
+and a few other numerical niceties. As it happens, `hypot` is
+available for matrices with `norm(..., type = "F")`:
+
+```{r hypot}
+c(norm(matrix(c(1e300, 2e300)), "F"), sqrt(sum(c(1e300, 2e300) ^ 2)))
+```
+
+It a bit clumsy, but it avoids overflow.
 
 ## Vectorized functions
 
@@ -157,12 +165,35 @@ For some reason, R has `chol2inv` but not `chol2solve`.
 
 ```{r cholesky, results = "hide"}
 chol2solve <- function (R, b) {
-    assert_that(is.vector(b) || (is.matrix(b) && nrow(b) == nrow(R)))
-    backsolve(R, backsolve(R, b, transpose = TRUE))
+    assert_that(is.matrix(R))
+    if (to_drop <- is.null(dim(b))) b <- matrix(b)
+    assert_that(nrow(b) == nrow(R))
+    pivot <- attr(R, "pivot")
+    w <- if (is.null(pivot)) {
+        backsolve(R, backsolve(R, b, transpose = TRUE))
+    } else {
+        assert_that(attr(R, "rank") == nrow(R))
+        inv_pivot <- order(pivot)
+        backsolve(R, backsolve(R, b[pivot, , drop = FALSE],
+                               transpose = TRUE))[inv_pivot, ]
+    }
+    if (to_drop) w <- drop(w)
+    w
 }
 
-assert_that(all.equal(solve(matrix(c(1, 2, 2, 5), 2, 2), c(1, 1)),
-                      chol2solve(chol(matrix(c(1, 2, 2, 5), 2, 2)), c(1, 1))))
+test_that("chol2solve handles linear systems", {
+    m <- matrix(c(14, -11, 5, -11, 17, -5, 5, -5, 13), 3, 3)
+    b <- c(1, 2, 5)
+    expect_that(chol2solve(chol(m), b), equals(solve(m, b)))
+})
+
+test_that("chol2solve handles pivots", {
+    m <- matrix(c(14, -11, 5, -11, 17, -5, 5, -5, 13), 3, 3)
+    b <- c(1, 2, 5)
+    m_ch <- chol(m, pivot = TRUE)
+    expect_that(attr(m_ch, "pivot"), equals(c(2, 3, 1)))
+    expect_that(chol2solve(m_ch, b), equals(solve(m, b)))
+})
 ```
 
 ## Useful miscellaneous utilities
