@@ -13,35 +13,68 @@ suppressPackageStartupMessages({
     library("data.table")
     library("dplyr")
     library("magrittr")
+    library("tidyr")
 })
+
+set.seed(11235)
 ```
 
 ## Pitfalls
 
-R has a bewildering number of names used at startup:
+### Ambiguous border cases
+
+It is a commonplace that you should use `seq_len(n)` instead of `1:n`
+because of the behavior when `n == 0`:
 
 
 ```r
-data_frame(package = c("base", "methods", "datasets", "utils",
-               "grDevices", "graphics", "stats"),
-           functions = vapply(package,
-               function (p) length(ls(paste0("package:", p))),
-               integer(1))) %>% arrange(desc(functions))
+1:0
+```
+
+```
+## [1] 1 0
+```
+
+```r
+seq_len(0)
+```
+
+```
+## integer(0)
+```
+
+These pitfalls are everywhere. R has a bewildering number of names
+used at startup:
+
+
+```r
+## NB. get is not vectorized.
+
+data_frame(package = paste0("package:",
+               c("base", "methods", "datasets", "utils",
+                 "grDevices", "graphics", "stats")),
+           name = lapply(package, ls)) %>%
+    unnest(name) %>%
+    filter(vapply(seq_len(nrow(.)),
+               function (r) is.function(get(.$name[r], .$package[r])),
+               logical(1))) %>%
+    group_by(package) %>%
+    tally %>%
+    arrange(desc(n))
 ```
 
 
 
-|package   | functions|
-|:---------|---------:|
-|base      |      1203|
-|stats     |       446|
-|methods   |       216|
-|utils     |       205|
-|grDevices |       107|
-|datasets  |       104|
-|graphics  |        87|
+|package           |    n|
+|:-----------------|----:|
+|package:base      | 1193|
+|package:stats     |  445|
+|package:methods   |  216|
+|package:utils     |  203|
+|package:grDevices |  104|
+|package:graphics  |   87|
 
-Even so, many base R methods try to guess your intention based on the
+Many of these methods try to guess your intention based on the
 length or dimensions of the argument, which can lead to odd bugs.
 Compare the following invocations of `diag`:
 
@@ -69,6 +102,29 @@ list(diag(3), diag(3, 4), diag(c(3, 4)))
 ## [1,]    3    0
 ## [2,]    0    4
 ```
+
+### Encoding
+
+Whenever reading or writing data, make sure to specify the encoding
+(so pass `encoding = "latin1"` or `encoding = "UTF-8"` to `read.csv`
+or `file`). Your code may work fine on Windows but fail on UNIX, or
+*vice versa*.
+
+### unwrap-protect
+
+Use `on.exit` to avoid resource leaks.
+
+### Missing functions
+
+Even though R has thousands of functions, it is missing `hypot` (which
+is
+[not trivial to implement](http://www.johndcook.com/blog/2010/06/02/whats-so-hard-about-finding-a-hypotenuse/))
+and a few other numerical niceties.
+
+## Vectorized functions
+
+Always use `rowSums`, `colSums`, `rowMeans`, and `colMeans` instead of
+the equivalent `apply` call.
 
 ## Array permutations
 
@@ -147,16 +203,16 @@ local({
 
 |          z| count|
 |----------:|-----:|
-| -2.7620906|    21|
-| -2.1153593|    38|
-| -1.4686280|   146|
-| -0.8218967|   221|
-| -0.1751654|   249|
-|  0.4715658|   185|
-|  1.1182971|    93|
-|  1.7650284|    35|
-|  2.4117597|    11|
-|  3.0584910|     1|
+| -3.0055422|     8|
+| -2.3214054|    45|
+| -1.6372685|   121|
+| -0.9531317|   219|
+| -0.2689949|   261|
+|  0.4151420|   198|
+|  1.0992788|   108|
+|  1.7834156|    30|
+|  2.4675524|     9|
+|  3.1516893|     1|
 
 ## Linear algebra
 
