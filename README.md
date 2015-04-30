@@ -7,12 +7,13 @@ This document is just a grab-bag of notes and gripes for R.
 
 ```r
 suppressPackageStartupMessages({
+    library("Matrix")
     library("knitr")
     library("printr")
     library("data.table")
     library("dplyr")       # masks data.table::{between,last}, etc.
     library("magrittr")
-    library("tidyr")       # masks magrittr::extract
+    library("tidyr")       # masks magrittr::extract, Matrix::expand
     library("assertthat")
     library("testthat")    # masks magrittr::{equals,is_less_than,not}
 })
@@ -21,6 +22,42 @@ set.seed(11235)
 ```
 
 ## Pitfalls
+
+### R is huge
+
+R has a bewildering number of functions already reserved at startup:
+
+
+```r
+## NB. get is not vectorized.
+
+data_frame(package = paste0("package:",
+               c("base", "methods", "datasets", "utils",
+                 "grDevices", "graphics", "stats", "Matrix")),
+           name = lapply(package, ls)) %>%
+    unnest(name) %>%
+    filter(vapply(seq_len(nrow(.)),
+               function (r) is.function(get(.$name[r], .$package[r])),
+               logical(1))) %>%
+    group_by(package) %>%
+    tally %>%
+    arrange(desc(n))
+```
+
+
+
+|package           |    n|
+|:-----------------|----:|
+|package:base      | 1193|
+|package:stats     |  445|
+|package:methods   |  216|
+|package:utils     |  203|
+|package:Matrix    |  116|
+|package:grDevices |  104|
+|package:graphics  |   87|
+
+If you want to do something, it is probably in `base` somewhere. Try
+`help(package = base)`
 
 ### Ambiguous border cases
 
@@ -44,40 +81,10 @@ seq_len(0)
 ## integer(0)
 ```
 
-These pitfalls are everywhere. R has a bewildering number of names
-used at startup:
 
-
-```r
-## NB. get is not vectorized.
-
-data_frame(package = paste0("package:",
-               c("base", "methods", "datasets", "utils",
-                 "grDevices", "graphics", "stats")),
-           name = lapply(package, ls)) %>%
-    unnest(name) %>%
-    filter(vapply(seq_len(nrow(.)),
-               function (r) is.function(get(.$name[r], .$package[r])),
-               logical(1))) %>%
-    group_by(package) %>%
-    tally %>%
-    arrange(desc(n))
-```
-
-
-
-|package           |    n|
-|:-----------------|----:|
-|package:base      | 1193|
-|package:stats     |  445|
-|package:methods   |  216|
-|package:utils     |  203|
-|package:grDevices |  104|
-|package:graphics  |   87|
-
-Many of these methods try to guess your intention based on the
-length or dimensions of the argument, which can lead to odd bugs.
-Compare the following invocations of `diag`:
+Many R functions try to guess your intention based on the length or
+dimensions of the argument, which can lead to odd bugs. Compare the
+following invocations of `diag`:
 
 
 ```r
@@ -109,7 +116,7 @@ list(diag(3), diag(3, 4), diag(c(3, 4)))
 Whenever reading or writing data, make sure to specify the encoding
 (so pass `encoding = "latin1"` or `encoding = "UTF-8"` to `read.csv`
 or `file`). Your code may work fine on Windows but fail on UNIX, or
-*vice versa*.
+vice versa.
 
 ### unwrap-protect
 
@@ -120,8 +127,8 @@ Use `on.exit` to avoid resource leaks.
 Even though R has thousands of functions, it is missing `hypot` (which
 is
 [not trivial to implement](http://www.johndcook.com/blog/2010/06/02/whats-so-hard-about-finding-a-hypotenuse/))
-and a few other numerical niceties. As it happens, `hypot` is
-available for matrices with `norm(..., type = "F")`:
+and a few other numerical niceties. As it happens, though, `hypot` is
+available for matrix arguments with `norm(..., type = "F")`:
 
 
 ```r
@@ -133,6 +140,32 @@ c(norm(matrix(c(1e300, 2e300)), "F"), sqrt(sum(c(1e300, 2e300) ^ 2)))
 ```
 
 It a bit clumsy, but it avoids overflow.
+
+### String stuff
+
+Avoid using native R string functions in favor of `stringr` whenever
+possible. Does this behavior make sense?
+
+
+```r
+data_frame(strings = c("", "-", "/", "-/", "/-", "-/-"),
+           base_pieces =
+               sapply(base::strsplit(strings, "/"), length),
+           stringr_pieces =
+               sapply(stringr::str_split(strings, "/"), length)) %>%
+    mutate(strings = sprintf("\"%s\"", encodeString(strings)))
+```
+
+
+
+|strings | base_pieces| stringr_pieces|
+|:-------|-----------:|--------------:|
+|""      |           0|              1|
+|"-"     |           1|              1|
+|"/"     |           1|              2|
+|"-/"    |           1|              2|
+|"/-"    |           2|              2|
+|"-/-"   |           2|              2|
 
 ## Vectorized functions
 
@@ -282,5 +315,32 @@ console:
 
 
 ```r
-ppage <- function (x) page(x, method = "print", max = 99999L)
+pp <- function (x) page(x, method = "print", max = 99999L)
 ```
+
+## Useful links
+
+1. Hadleyverse:
+  1. [Advanced R](http://adv-r.had.co.nz/)
+  2. [R packages](http://r-pkgs.had.co.nz/)
+  3. [ggplot2](http://docs.ggplot2.org/current/)
+  4. [github link](http://github.com/hadley)
+2. [R project](http://www.r-project.org/)
+  1. [R internals](http://cran.r-project.org/doc/manuals/r-release/R-ints.html)
+  2. [R language definition](http://cran.r-project.org/doc/manuals/r-release/R-lang.html)
+  3. [Writing R extensions](http://cran.r-project.org/doc/manuals/r-release/R-exts.html)
+  4. [github R mirror](https://github.com/wch/r-source)
+3. [Rcpp](http://www.rcpp.org/)
+  1. [Armadillo](http://arma.sourceforge.net/)
+  2. [Rcpp documentation](http://dirk.eddelbuettel.com/code/rcpp.html)
+  3. [RcppArmadillo](http://dirk.eddelbuettel.com/code/rcpp.armadillo.html)
+  4. [RcppEigen](http://www.jstatsoft.org/v52/i05)
+4. Netlib
+  1. [BLAS](http://www.netlib.org/blas/)
+  2. [LAPACK](http://www.netlib.org/lapack/)
+5. data.table
+  1. [wiki]([data.table](https://github.com/Rdatatable/data.table/wiki))
+  2. [cheat sheet](https://s3.amazonaws.com/assets.datacamp.com/img/blog/data+table+cheat+sheet.pdf)
+6. Useful packages
+  1. [zoo](http://cran.r-project.org/web/packages/zoo/index.html)
+  2. [Yihui Xie's github](https://github.com/yihui)
