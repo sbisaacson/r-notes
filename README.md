@@ -56,8 +56,9 @@ data_frame(package = paste0("package:",
 |package:grDevices |  104|
 |package:graphics  |   87|
 
-If you want to do something, it is probably in `base` somewhere. Try
-`help(package = base)`
+If you want to do something, it is probably in `base` somewhere. "A
+month in the lab can save an hour in the library." Try `help(package =
+base)` before writing your own code.
 
 ### Ambiguous border cases
 
@@ -167,6 +168,55 @@ data_frame(strings = c("", "-", "/", "-/", "/-", "-/-"),
 |"/-"    |           2|              2|
 |"-/-"   |           2|              2|
 
+### Vectors and arrays
+
+R really has two kinds of 1D vectors. An expression such as `1:5` has
+no `dim` attribute, but you could set it if you want. I think having
+no dim attribute for vanilla vectors is a strange design feature and
+I've never really understood what the purpose of the distinction
+between length and dim is supposed to be in the one-dimensional case.
+R will try to coerce a dimensionless vector to what its designers
+envisioned as the most sensible interpretation, but it depends on the
+context. Usually it just makes a column vector (which, by the way,
+`matrix` with no `nrow` or `ncol` arguments will do). But sometimes it
+makes a row vector: for instance, we have
+
+
+```r
+print(1:5 %*% 1:5)
+```
+
+```
+##      [,1]
+## [1,]   55
+```
+
+The first `1:5` becomes a row vector and the second a column vector.
+But if we coerce the first argument to a column vector, suddenly the
+second becomes a row:
+
+
+
+```r
+print(matrix(1:5) %*% 1:5)
+```
+
+```
+##      [,1] [,2] [,3] [,4] [,5]
+## [1,]    1    2    3    4    5
+## [2,]    2    4    6    8   10
+## [3,]    3    6    9   12   15
+## [4,]    4    8   12   16   20
+## [5,]    5   10   15   20   25
+```
+
+The documentation says
+
+    Since R 3.2.0, promotion of a vector to a 1-row or 1-column matrix
+    happens in even more cases, when one of the two choices allows x
+    and y to get conformable dimensions.
+
+
 ## Vectorized functions
 
 Always use `rowSums`, `colSums`, `rowMeans`, and `colMeans` instead of
@@ -204,6 +254,14 @@ assert_that(test_array[1, 2, 4, 3] == test_array_perm[2, 4, 3, 1])
 assert_that(all(test_array[test_indices] ==
                 test_array_perm[test_indices[, c(2, 3, 4, 1)]]))
 ```
+
+This is even confusing in the discussion of `|:` in
+[J for C programmers](http://www.jsoftware.com/help/jforc/contents.htm):
+"I wish I could give you an intuitive definition but I can't."
+
+Incidentally, if you have an integer permutation `v`, then `order(v)`
+is its inverse (i.e., if `v` is the integers 1 through `n` rearranged,
+then `v[order(v)] == order(v)[v] == seq_len(n)`).
 
 ## Random number generation
 
@@ -262,6 +320,8 @@ local({
 
 ## Linear algebra
 
+### Cholesky decompositions
+
 For some reason, R has `chol2inv` but not `chol2solve`.
 
 
@@ -298,6 +358,10 @@ test_that("chol2solve handles pivots", {
 })
 ```
 
+### crossprod
+
+Never write `t(x) %*% y`; write `crossprod(x, y)` instead.
+
 ## Useful miscellaneous utilities
 
 When I miss MATLAB:
@@ -316,6 +380,73 @@ console:
 
 ```r
 pp <- function (x) page(x, method = "print", max = 99999L)
+```
+
+## ESS and EMACS
+
+This isn't really R stuff per se, but my notes editing R code.
+Here's my ESS config from (some version of) my
+[`.emacs`](https://github.com/sbisaacson/literate-emacs):
+```elisp
+(defun sbi/ess-setup ()
+  "Set up ESS customizations."
+  (ess-toggle-underscore nil)
+  (ess-add-style 'sbi-custom
+                 '((ess-indent-level . 4)
+                   (ess-first-continued-statement-offset . 4)
+                   (ess-continued-statement-offset . 0)
+                   (ess-brace-offset . 0)
+                   (ess-arg-function-offset . 4)
+                   (ess-arg-function-offset-new-line . '(4))
+                   (ess-expression-offset . 4)
+                   (ess-else-offset . 0)
+                   (ess-close-brace-offset . 0))))
+
+(use-package ess-site
+  :ensure ess
+  :commands R
+  :mode (("\\.[rR]\\'" . R-mode)
+         ("\\.Rnw\\'" . Rnw-mode))
+  :config (sbi/ess-setup))
+```
+
+Some people really don't like underscores because you have to press
+the shift key to type them, and [ESS](http://ess.r-project.org/) has
+helpfully bound that to `<-`, so you have to hit shift-hyphen twice.
+Or you could just disable this feature: that's the
+`(ess-toggle-underscore nil)`.
+[Google](https://google-styleguide.googlecode.com/svn/trunk/Rguide.xml#identifiers)
+recommends using full stops or camelCase. But full stops in names
+interfere with the S3 class system.
+[Hadley Wickham](http://adv-r.had.co.nz/Style.html) recommends
+underscores, but beware of this convention. Some of his functions only
+differ in name from core R by replacing `.` with `_`, but differ in
+behavior—`data.frame` has `stringsAsFactors = TRUE` by default, while
+`dplyr::data_frame` has `stringsAsFactors = FALSE` (as it should have
+been). I go for underscores on this one. There are no S3 surprises and
+`We_the_people_of_the_United_States` is a lot more readable than
+`inOrderToFormAMorePerfectUnion`.
+
+ESS by default will indent magrittr/dplyr pipelines in a charming
+echelon fashion:
+
+```r
+mtcars %>%
+    group_by(cyl, gear) %>%
+        summarise(mean(wt), mean(hp)) %>%
+            ungroup %>%
+                arrange(`mean(wt)`)
+```
+
+You have to mess with `ess-continued-statement-offset` and
+`ess-first-continued-statement-offset` to get something sane like
+
+```r
+mtcars %>%
+    group_by(cyl, gear) %>%
+    summarise(mean(wt), mean(hp)) %>%
+    ungroup %>%
+    arrange(`mean(wt)`)
 ```
 
 ## Useful links
@@ -339,7 +470,7 @@ pp <- function (x) page(x, method = "print", max = 99999L)
   1. [BLAS](http://www.netlib.org/blas/)
   2. [LAPACK](http://www.netlib.org/lapack/)
 5. data.table
-  1. [wiki]([data.table](https://github.com/Rdatatable/data.table/wiki))
+  1. [wiki](https://github.com/Rdatatable/data.table/wiki)
   2. [cheat sheet](https://s3.amazonaws.com/assets.datacamp.com/img/blog/data+table+cheat+sheet.pdf)
 6. Useful packages
   1. [zoo](http://cran.r-project.org/web/packages/zoo/index.html)
