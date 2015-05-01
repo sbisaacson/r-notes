@@ -264,6 +264,32 @@ test_that("chol2solve handles pivots", {
 
 Never write `t(x) %*% y`; write `crossprod(x, y)` instead.
 
+## Math
+
+### Logit and inverse logit
+
+For the inverse logit, don't write `1 / exp(-x)`.  Use `plogis` (in the
+`stats` package, which is loaded by default) or `boot::inv.logit`
+(which just calls `plogis`). For the logit, use `stats::qlogis` or
+`boot::logit` (which is just an alias). There is no real numerical
+reason to do this, but the internal R functions are guaranteed to
+handle `NaN` and infinity correctly, and it is more readable.
+
+### Computing upper tails
+
+Never write `1 - pfoobar(...)`. All of the
+distribution functions accept an optional `lower.tail`
+so `1 - pfoobar(...)` can be replaced by `pfoobar(...,
+lower.tail = FALSE)`. It looks like more typing, but it is more
+precise due to the potential catastrophic cancellation:
+
+```{r upper-tails}
+c(1 - pnorm(10), pnorm(10, lower.tail = FALSE))
+```
+
+If you find yourself writing `log(pfoobar(...))`, use `pfoobar(...,
+log = TRUE)` instead.
+
 ## Useful miscellaneous utilities
 
 When I miss MATLAB:
@@ -375,3 +401,6 @@ mtcars %>%
 6. Useful packages
   1. [zoo](http://cran.r-project.org/web/packages/zoo/index.html)
   2. [Yihui Xie's github](https://github.com/yihui)
+7. Stan (Bayesian modeling)
+  1. [Stan project](http://mc-stan.org/)
+  2. [Manual](http://mc-stan.org/manual.html)
