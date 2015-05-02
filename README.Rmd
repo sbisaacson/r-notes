@@ -111,11 +111,12 @@ no `dim` attribute, but you could set it if you want. I think having
 no dim attribute for vanilla vectors is a strange design feature and
 I've never really understood what the purpose of the distinction
 between length and dim is supposed to be in the one-dimensional case.
-R will try to coerce a dimensionless vector to what its designers
-envisioned as the most sensible interpretation, but it depends on the
-context. Usually it just makes a column vector (which, by the way,
-`matrix` with no `nrow` or `ncol` arguments will do). But sometimes it
-makes a row vector: for instance, we have
+R does not have scalars (which would be arrays with zero-length
+dimension attributes). It will try to coerce a dimensionless vector to
+what its designers envisioned as the most sensible interpretation, but
+it depends on the context. Usually it just makes a column vector
+(which, by the way, `matrix` with no `nrow` or `ncol` arguments will
+do). But sometimes it makes a row vector: for instance, we have
 
 ```{r vector-array}
 print(1:5 %*% 1:5)
@@ -137,7 +138,46 @@ The documentation says
     and y to get conformable dimensions.
 
 This is almost guaranteed to blow up if you write code that works with
-matrices and you plug in something with only one row or one column.
+matrices and you plug in something with only one row or one column,
+since `drop = TRUE` is the default when indexing.
+
+### Lists and NULL
+
+I like to think of lists as arrays of boxed data. The `[` function
+applied to a list acts like vector indexing and returns a list, while
+`[[` only accepts a single index and unboxes the entry of the list.
+However, this doesn't quite work with `NULL`.
+Assigning `NULL` to a list index deletes entries:
+
+```{r list-example}
+example_list <- structure(as.list(1:10), names = letters[1:10])
+example_list[1:3] <- NULL
+example_list
+example_list[[1]] <- NULL
+example_list
+```
+
+The odd thing is that lists can have NULL entries:
+
+```{r list-example-2}
+list(1, 5, NULL)
+```
+
+You can't delete entries from numeric vectors with `NULL` assignment.
+
+The `[[` function does accept vector arguments for lists of lists:
+```{r fancy-lists}
+example_list <- lapply(seq_len(10), function (x) as.list(x ^ seq_len(x)))
+example_list[[c(4, 3)]]
+```
+
+Lists can have dimension attributes (I've never seen anyone use this in
+real code) and then you can use array indexing:
+```{r fancier-lists}
+example_list <- array(as.list(1:12), c(2, 2, 3))
+example_list[2, 1, 3]
+example_list[[2, 1, 3]]
+```
 
 ## Vectorized functions
 
