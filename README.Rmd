@@ -182,9 +182,10 @@ example_list[[2, 1, 3]]
 ### Closures and garbage collection
 
 I learned about this issue on
-[the Win-Vector Blog](http://www.win-vector.com/blog/2015/03/using-closures-as-objects-in-r/)
+[the Win-Vector Blog](http://www.win-vector.com/blog/2015/03/using-closures-as-objects-in-r/).
 Closures in R are not really closures because they retain the whole
-environment of their definition:
+environment of their definition, even things you wouldn't expect to be
+accessible:
 
 ```{r evil-closures}
 make_accumulator <- function () {
