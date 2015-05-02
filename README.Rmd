@@ -96,12 +96,12 @@ Avoid using native R string functions in favor of `stringr` whenever
 possible. Does this behavior make sense?
 
 ```{r strsplit}
-data_frame(strings = c("", "-", "/", "-/", "/-", "-/-"),
-           base_pieces =
-               sapply(base::strsplit(strings, "/"), length),
-           stringr_pieces =
-               sapply(stringr::str_split(strings, "/"), length)) %>%
-    mutate(strings = sprintf("\"%s\"", encodeString(strings)))
+data_frame(string = c("", "-", "/", "-/", "/-", "-/-"),
+           `base pieces` =
+               sapply(base::strsplit(string, "/"), length),
+           `stringr pieces` =
+               sapply(stringr::str_split(string, "/"), length)) %>%
+    mutate(string = sprintf("\"%s\"", encodeString(string)))
 ```
 
 ### Vectors and arrays
@@ -136,11 +136,14 @@ The documentation says
     happens in even more cases, when one of the two choices allows x
     and y to get conformable dimensions.
 
+This is almost guaranteed to blow up if you write code that works with
+matrices and you plug in something with only one row or one column.
 
 ## Vectorized functions
 
 Always use `rowSums`, `colSums`, `rowMeans`, and `colMeans` instead of
-the equivalent `apply` call.
+the equivalent `apply` call. Oddly enough, this seems to be it. There
+is no vectorized version of `cumsum`.
 
 ## Array permutations
 
@@ -260,20 +263,65 @@ test_that("chol2solve handles pivots", {
 })
 ```
 
+It almost goes without saying that you should never invert matrices
+(never write `solve(a)`, and always use `solve(a, v)` in favor of
+`solve(a) %*% v`). The `chol2inv` function makes an appearance in
+`summary.lm` where it is used to compute standard errors of regression
+coefficients.
+
 ### crossprod
 
-Never write `t(x) %*% y`; write `crossprod(x, y)` instead.
+Use `crossprod(x, y)` in favor of `t(x) %*% y`. There is an analogous
+function `tcrossprod(x, y)` to replace `x %*% t(y)`.
+
+### QR decompositions
+
+The
+[R documentation on QR decompositions](https://stat.ethz.ch/R-manual/R-devel/library/base/html/qr.html)
+is worth reading. But it never, as far as I know, explains the content
+of the `qraux` vector in the output of `qr`. At some point I dug into
+the source code for the QR decomposition routines (look at, say,
+[`src/appl/dqrdc2`](https://github.com/wch/r-source/blob/trunk/src/appl/dqrdc2.f)),
+which contain an ominous comment that
+[dates back to 1997](https://svn.r-project.org/R/tags/R-0-60/src/appl.f/dqrdc2.f):
+
+```fortran
+c     i am very nervous about modifying linpack code in this way.
+c     if you are a computational linear algebra guru and you really
+c     understand how to solve this problem please feel free to
+c     suggest improvements to this code.
+```
+
+As it happens, `qraux` stores different data depending on whether you
+use LAPACK or LINPACK routines. The _i_th Householder vector is stored
+in the last _n - i_ entries of the _i_th column of `qr`. The first
+_i - 1_ entries of the Householder vector are zero. Here's where the
+LINPACK and LAPACK decompositions in R differ:
+
+* In LINPACK (the default), the _i_th entry of the Householder vector
+  is stored in `qraux[i]` and _β_ is `1 / qraux[i]`.
+* When you use `LAPACK = TRUE`, the _i_th entry of the Householder
+  vector is 1 and _β_ is `qraux[i]`.
+
+In R notation, the Householder transformation associated to a pair
+`(beta, v)` is the function
+```r
+function (w) w - beta * v %*% crossprod(v, w)
+```
+For details on the algorithm, see
+[Golub and Van Loan](http://www.cs.cornell.edu/cv/GVL4/golubandvanloan.htm).
 
 ## Math
 
 ### Logit and inverse logit
 
-For the inverse logit, don't write `1 / exp(-x)`.  Use `plogis` (in the
-`stats` package, which is loaded by default) or `boot::inv.logit`
-(which just calls `plogis`). For the logit, use `stats::qlogis` or
-`boot::logit` (which is just an alias). There is no real numerical
-reason to do this, but the internal R functions are guaranteed to
-handle `NaN` and infinity correctly, and it is more readable.
+For the inverse logit, there is no need to write `1 / (1 + exp(-x))`.
+Use `plogis` (in the `stats` package, which is loaded by default) or
+`boot::inv.logit` (which just calls `plogis`). For the logit, use
+`stats::qlogis` or `boot::logit` (which is just an alias). There is no
+real numerical reason to do this, but the internal R functions are
+guaranteed to handle `NaN` and infinity correctly, and the functions
+are more readable.
 
 ### Computing upper tails
 
