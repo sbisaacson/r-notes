@@ -336,6 +336,76 @@ example_list[[2, 1, 3]]
 ## [1] 10
 ```
 
+### Closures and garbage collection
+
+I learned about this issue on
+[the Win-Vector Blog](http://www.win-vector.com/blog/2015/03/using-closures-as-objects-in-r/)
+Closures in R are not really closures because they retain the whole
+environment of their definition:
+
+
+```r
+make_accumulator <- function () {
+    garbage <- rnorm(65536)
+    x <- 0
+    function (y) {
+        x <<- x + sum(y)
+        x
+    }
+}
+
+test_accum <- make_accumulator()
+test_accum(5)
+```
+
+```
+## [1] 5
+```
+
+```r
+test_accum(10)
+```
+
+```
+## [1] 15
+```
+
+```r
+object.size(test_accum)
+```
+
+```
+## 5736 bytes
+```
+
+So far, so good. But in the documentation for `object.size`, we see
+
+     Associated space (e.g., the environment of a function and what the
+     pointer in a 'EXTPTRSXP' points to) is not included in the
+     calculation.
+
+In fact, we can still get `garbage`:
+
+
+```r
+str(get("garbage", environment(test_accum)))
+```
+
+```
+##  num [1:65536] -0.29706 -1.42367 -0.21632 -0.00588 -0.85914 ...
+```
+
+The true size is exposed with `serialize`:
+
+
+```r
+object.size(serialize(test_accum, NULL))
+```
+
+```
+## 530784 bytes
+```
+
 ## Vectorized functions
 
 Always use `rowSums`, `colSums`, `rowMeans`, and `colMeans` instead of
@@ -427,16 +497,16 @@ local({
 
 |          z| count|
 |----------:|-----:|
-| -3.0055422|     8|
-| -2.3214054|    45|
-| -1.6372685|   121|
-| -0.9531317|   219|
-| -0.2689949|   261|
-|  0.4151420|   198|
-|  1.0992788|   108|
-|  1.7834156|    30|
-|  2.4675524|     9|
-|  3.1516893|     1|
+| -3.9941189|     1|
+| -3.2266330|     5|
+| -2.4591471|    45|
+| -1.6916612|   137|
+| -0.9241754|   256|
+| -0.1566895|   284|
+|  0.6107964|   195|
+|  1.3782823|    63|
+|  2.1457682|    13|
+|  2.9132540|     1|
 
 ## Linear algebra
 
