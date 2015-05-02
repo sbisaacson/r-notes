@@ -72,7 +72,7 @@ Whenever reading or writing data, make sure to specify the encoding
 or `file`). Your code may work fine on Windows but fail on UNIX, or
 vice versa.
 
-### unwrap-protect
+### unwind-protect
 
 Use `on.exit` to avoid resource leaks.
 
@@ -281,7 +281,7 @@ The
 is worth reading. But it never, as far as I know, explains the content
 of the `qraux` vector in the output of `qr`. At some point I dug into
 the source code for the QR decomposition routines (look at, say,
-[`src/appl/dqrdc2`](https://github.com/wch/r-source/blob/trunk/src/appl/dqrdc2.f)),
+[`src/appl/dqrdc2.f`](https://github.com/wch/r-source/blob/trunk/src/appl/dqrdc2.f)),
 which contain an ominous comment that
 [dates back to 1997](https://svn.r-project.org/R/tags/R-0-60/src/appl.f/dqrdc2.f):
 
@@ -293,15 +293,15 @@ c     suggest improvements to this code.
 ```
 
 As it happens, `qraux` stores different data depending on whether you
-use LAPACK or LINPACK routines. The _i_th Householder vector is stored
-in the last _n - i_ entries of the _i_th column of `qr`. The first
-_i - 1_ entries of the Householder vector are zero. Here's where the
+use LAPACK or LINPACK routines. The i-th Householder vector is stored
+in the last n - i entries of the i-th column of `qr`. The first
+i - 1 entries of the Householder vector are zero. Here's where the
 LINPACK and LAPACK decompositions in R differ:
 
-* In LINPACK (the default), the _i_th entry of the Householder vector
-  is stored in `qraux[i]` and _β_ is `1 / qraux[i]`.
-* When you use `LAPACK = TRUE`, the _i_th entry of the Householder
-  vector is 1 and _β_ is `qraux[i]`.
+* In LINPACK (the default), the i-th entry of the Householder vector
+  is stored in `qraux[i]` and β is `1 / qraux[i]`.
+* When you use `LAPACK = TRUE`, the i-th entry of the Householder
+  vector is 1 and β is `qraux[i]`.
 
 In R notation, the Householder transformation associated to a pair
 `(beta, v)` is the function
