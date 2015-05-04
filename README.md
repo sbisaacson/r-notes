@@ -340,9 +340,9 @@ example_list[[2, 1, 3]]
 
 I learned about this issue on
 [the Win-Vector Blog](http://www.win-vector.com/blog/2015/03/using-closures-as-objects-in-r/).
-Closures in R are not really closures because they retain the whole
-environment of their definition, even things you wouldn't expect to be
-accessible:
+Closures in R are not really closures because they retain the entire
+environment of their definition, including things you wouldn't expect
+to be accessible:
 
 
 ```r
@@ -483,12 +483,12 @@ I almost always use
 [`dplyr`](http://cran.rstudio.com/web/packages/dplyr/vignettes/introduction.html)
 instead of
 [`data.table`](http://cran.r-project.org/web/packages/data.table/vignettes/datatable-intro.pdf).
-This is one task that's impossible with `dplyr`:
+This is one task that's awkward with `dplyr`:
 
 
 ```r
 local({
-    x <- data.table(z = rnorm(1000), key = "z")
+    x <- data.table(z = with_seed(12345, rnorm(1000)), key = "z")
     x_breaks <- data.table(z = seq(min(x$z), max(x$z), length.out = 10), key = "z")
     x_breaks[x, .(count = .N), roll = TRUE, by = z]
 })
@@ -498,16 +498,35 @@ local({
 
 |          z| count|
 |----------:|-----:|
-| -3.9941189|     1|
-| -3.2266330|     5|
-| -2.4591471|    45|
-| -1.6916612|   137|
-| -0.9241754|   256|
-| -0.1566895|   284|
-|  0.6107964|   195|
-|  1.3782823|    63|
-|  2.1457682|    13|
-|  2.9132540|     1|
+| -2.7783255|    21|
+| -2.0995412|    52|
+| -1.4207569|   132|
+| -0.7419726|   249|
+| -0.0631883|   260|
+|  0.6155961|   186|
+|  1.2943804|    68|
+|  1.9731647|    28|
+|  2.6519490|     3|
+|  3.3307333|     1|
+
+After working with `dplyr` and `data.table` for a while, though, you
+forget what base R has to offer:
+
+```r
+with_seed(12345, rnorm(1000)) %>%
+    cut(breaks = c(seq(min(.), max(.), length.out = 10), Inf),
+        include.lowest = TRUE, right = FALSE) %>%
+    table
+```
+
+
+
+| [-2.78,-2.1)| [-2.1,-1.42)| [-1.42,-0.742)| [-0.742,-0.0632)| [-0.0632,0.616)| [0.616,1.29)| [1.29,1.97)| [1.97,2.65)| [2.65,3.33)| [3.33,Inf]|
+|------------:|------------:|--------------:|----------------:|---------------:|------------:|-----------:|-----------:|-----------:|----------:|
+|           21|           52|            132|              249|             260|          186|          68|          28|           3|          1|
+The semantics of this operation are slightly different than a rolling
+join (which is more efficient when everything is sorted, but that's
+another issue…).
 
 ## Linear algebra
 
