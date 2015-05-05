@@ -220,7 +220,6 @@ The true size is exposed with `serialize`:
 ```{r evil-closures-3}
 object.size(serialize(test_accum, NULL))
 ```
->>>>>>> a724ee873287314e078a5ee0e50b3a9de4240f84
 
 ## Vectorized functions
 

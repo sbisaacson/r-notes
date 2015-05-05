@@ -406,7 +406,6 @@ object.size(serialize(test_accum, NULL))
 ```
 ## 530784 bytes
 ```
->>>>>>> a724ee873287314e078a5ee0e50b3a9de4240f84
 
 ## Vectorized functions
 
