@@ -336,6 +336,78 @@ example_list[[2, 1, 3]]
 ## [1] 10
 ```
 
+### Closures and garbage collection
+
+I learned about this issue on
+[the Win-Vector Blog](http://www.win-vector.com/blog/2015/03/using-closures-as-objects-in-r/).
+Closures in R are not really closures because they retain the entire
+environment of their definition, including things you wouldn't expect
+to be accessible:
+
+
+```r
+make_accumulator <- function () {
+    garbage <- rnorm(65536)
+    x <- 0
+    function (y) {
+        x <<- x + sum(y)
+        x
+    }
+}
+
+test_accum <- make_accumulator()
+test_accum(5)
+```
+
+```
+## [1] 5
+```
+
+```r
+test_accum(10)
+```
+
+```
+## [1] 15
+```
+
+```r
+object.size(test_accum)
+```
+
+```
+## 5736 bytes
+```
+
+So far, so good. But in the documentation for `object.size`, we see
+
+     Associated space (e.g., the environment of a function and what the
+     pointer in a 'EXTPTRSXP' points to) is not included in the
+     calculation.
+
+In fact, we can still get `garbage`:
+
+
+```r
+str(get("garbage", environment(test_accum)))
+```
+
+```
+##  num [1:65536] -0.29706 -1.42367 -0.21632 -0.00588 -0.85914 ...
+```
+
+The true size is exposed with `serialize`:
+
+
+```r
+object.size(serialize(test_accum, NULL))
+```
+
+```
+## 530784 bytes
+```
+>>>>>>> a724ee873287314e078a5ee0e50b3a9de4240f84
+
 ## Vectorized functions
 
 Always use `rowSums`, `colSums`, `rowMeans`, and `colMeans` instead of
@@ -412,12 +484,12 @@ I almost always use
 [`dplyr`](http://cran.rstudio.com/web/packages/dplyr/vignettes/introduction.html)
 instead of
 [`data.table`](http://cran.r-project.org/web/packages/data.table/vignettes/datatable-intro.pdf).
-This is one task that's impossible with `dplyr`:
+This is one task that's awkward with `dplyr`:
 
 
 ```r
 local({
-    x <- data.table(z = rnorm(1000), key = "z")
+    x <- data.table(z = with_seed(12345, rnorm(1000)), key = "z")
     x_breaks <- data.table(z = seq(min(x$z), max(x$z), length.out = 10), key = "z")
     x_breaks[x, .(count = .N), roll = TRUE, by = z]
 })
@@ -427,16 +499,35 @@ local({
 
 |          z| count|
 |----------:|-----:|
-| -3.0055422|     8|
-| -2.3214054|    45|
-| -1.6372685|   121|
-| -0.9531317|   219|
-| -0.2689949|   261|
-|  0.4151420|   198|
-|  1.0992788|   108|
-|  1.7834156|    30|
-|  2.4675524|     9|
-|  3.1516893|     1|
+| -2.7783255|    21|
+| -2.0995412|    52|
+| -1.4207569|   132|
+| -0.7419726|   249|
+| -0.0631883|   260|
+|  0.6155961|   186|
+|  1.2943804|    68|
+|  1.9731647|    28|
+|  2.6519490|     3|
+|  3.3307333|     1|
+
+After working with `dplyr` and `data.table` for a while, though, you
+forget what base R has to offer:
+
+```r
+with_seed(12345, rnorm(1000)) %>%
+    cut(breaks = c(seq(min(.), max(.), length.out = 10), Inf),
+        include.lowest = TRUE, right = FALSE) %>%
+    table
+```
+
+
+
+| [-2.78,-2.1)| [-2.1,-1.42)| [-1.42,-0.742)| [-0.742,-0.0632)| [-0.0632,0.616)| [0.616,1.29)| [1.29,1.97)| [1.97,2.65)| [2.65,3.33)| [3.33,Inf]|
+|------------:|------------:|--------------:|----------------:|---------------:|------------:|-----------:|-----------:|-----------:|----------:|
+|           21|           52|            132|              249|             260|          186|          68|          28|           3|          1|
+The semantics of this operation are slightly different than a rolling
+join (which is more efficient when everything is sorted, but that's
+another issue…).
 
 ## Linear algebra
 
