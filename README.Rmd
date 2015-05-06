@@ -267,6 +267,67 @@ Incidentally, if you have an integer permutation `v`, then `order(v)`
 is its inverse (i.e., if `v` is the integers 1 through `n` rearranged,
 then `v[order(v)] == order(v)[v] == seq_len(n)`).
 
+## Apply and margins
+
+Be careful with `apply(X, MARGIN, FUN, ...)` when `FUN` returns a
+vector. The documentation explains:
+
+    If each call to 'FUN' returns a vector of length 'n', then 'apply'
+    returns an array of dimension 'c(n, dim(X)[MARGIN])' if 'n > 1'.
+    If 'n' equals '1', 'apply' returns a vector if 'MARGIN' has length
+    1 and an array of dimension 'dim(X)[MARGIN]' otherwise.  If 'n' is
+    '0', the result has length 0 but not necessarily the 'correct'
+    dimension.
+
+In fact, if `MARGIN` is a permutation of the indices and `FUN` is the
+identity, `apply` acts the same as `aperm`:
+
+```{r aperm-and-apply, results = "hide"}
+test_array <- array(rnorm(48), c(2, 2, 4, 3))
+assert_that(all(aperm(test_array, c(4, 2, 1, 3)) ==
+                    apply(test_array, c(4, 2, 1, 3), function (x) x)))
+```
+
+What happens to the non-`MARGIN` axes? The key to remember is that
+`apply` doesn't act in place, so when you use the row as the margin,
+the result appears transposed:
+
+```{r apply-and-margins}
+test_matrix <- matrix(1:12, 3, 4)
+list(original = test_matrix,
+     row_margin = apply(test_matrix, 1, cumsum),
+     col_margin = apply(test_matrix, 2, cumsum))
+```
+
+This is in contrast to, say, J (which I don't know at all!). J
+has fewer surprises, but is difficult to read:
+
+```
+   |: 1 + i. 4 3
+1 4 7 10
+2 5 8 11
+3 6 9 12
+   +/\ |: 1 + i. 4 3
+1  4  7 10
+3  9 15 21
+6 15 24 33
+   +/\"1 |: 1 + i. 4 3
+1 5 12 22
+2 7 15 26
+3 9 18 30
+   2 # |: 1 + i. 4 3
+1 4 7 10
+1 4 7 10
+2 5 8 11
+2 5 8 11
+3 6 9 12
+3 6 9 12
+   2 #"1 |: 1 + i. 4 3
+1 1 4 4 7 7 10 10
+2 2 5 5 8 8 11 11
+3 3 6 6 9 9 12 12
+```
+
 ## Random number generation
 
 Use this to evaluate an expression while temporarily reseeding the
