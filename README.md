@@ -407,6 +407,74 @@ object.size(serialize(test_accum, NULL))
 ## 530784 bytes
 ```
 
+### Data frames
+
+You can store matrices and arrays in data frames. However, you can't
+create data frames with `data.frame` or `data_frame` that way:
+
+
+```r
+array_frame <- data.frame(x = 1:10)
+array_frame$m <- array(rnorm(60), c(10, 3, 2))
+
+names(array_frame)
+```
+
+```
+## [1] "x" "m"
+```
+
+```r
+names(data.frame(x = 1:10, m = array(rnorm(60), c(10, 3, 2))))
+```
+
+```
+## [1] "x"   "m.1" "m.2" "m.3" "m.4" "m.5" "m.6"
+```
+
+Also, the `[` operator doesn't work with these the way you might
+expect:
+
+
+
+```r
+list(array_frame[1, "m"], array_frame$m[1, , ])
+```
+
+```
+## [[1]]
+## [1] 1.21206
+## 
+## [[2]]
+##            [,1]       [,2]
+## [1,]  1.2120604 -0.8278234
+## [2,]  0.3467810  2.1007886
+## [3,] -0.1019131  0.3676326
+```
+
+The `dplyr` package will not let you work with these exotic data
+frames, and `data.table` won't let you create them (as far as I know).
+You could convert the column to a list:
+
+
+```r
+array_frame$m <- array_frame %$%
+    vapply(seq_len(nrow(m)), function (r) list(m[r, , ]), list(1))
+array_frame[1, "m"]
+```
+
+```
+## [[1]]
+##            [,1]       [,2]
+## [1,]  1.2120604 -0.8278234
+## [2,]  0.3467810  2.1007886
+## [3,] -0.1019131  0.3676326
+```
+
+In general, lists in data frames are a very useful idiom. However, in
+this case by using a boxed structure you lose all the advantages of
+array storage that you had in the first place.
+
 ## Vectorized functions
 
 Always use `rowSums`, `colSums`, `rowMeans`, and `colMeans` instead of
