@@ -226,8 +226,8 @@ since `drop = TRUE` is the default when indexing.
 I like to think of lists as arrays of boxed data. The `[` function
 applied to a list acts like vector indexing and returns a list, while
 `[[` only accepts a single index and unboxes the entry of the list.
-However, this doesn't quite work with `NULL`.
-Assigning `NULL` to a list index deletes entries:
+You can't delete entries from numeric vectors with `NULL` assignment,
+but assigning `NULL` to a list index deletes entries:
 
 
 ```r
@@ -259,6 +259,41 @@ example_list
 ## [1] 10
 ```
 
+To store a `NULL` entry, you need to create a list first:
+
+
+```r
+example_list[c(1, 4)] <- list(NULL)
+example_list
+```
+
+```
+## $d
+## NULL
+## 
+## $e
+## [1] 5
+## 
+## $f
+## [1] 6
+## 
+## $g
+## NULL
+## 
+## $h
+## [1] 8
+## 
+## $i
+## [1] 9
+## 
+## $j
+## [1] 10
+```
+
+You might expect, based on the analogy with vectors, that
+`[[` lets you avoid the `list` invocation, but it also deletes entries:
+
+
 ```r
 example_list[[1]] <- NULL
 example_list
@@ -272,7 +307,7 @@ example_list
 ## [1] 6
 ## 
 ## $g
-## [1] 7
+## NULL
 ## 
 ## $h
 ## [1] 8
@@ -284,27 +319,7 @@ example_list
 ## [1] 10
 ```
 
-The odd thing is that lists can have NULL entries:
-
-
-```r
-list(1, 5, NULL)
-```
-
-```
-## [[1]]
-## [1] 1
-## 
-## [[2]]
-## [1] 5
-## 
-## [[3]]
-## NULL
-```
-
-You can't delete entries from numeric vectors with `NULL` assignment.
-
-The `[[` function does accept vector arguments for lists of lists:
+The `[[` function accepts vector arguments for lists of lists:
 
 ```r
 example_list <- lapply(seq_len(10), function (x) as.list(x ^ seq_len(x)))
