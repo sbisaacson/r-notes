@@ -112,6 +112,92 @@ list(diag(3), diag(3, 4), diag(c(3, 4)))
 ## [2,]    0    4
 ```
 
+### Indexing
+
+If `x` is a vector and you index `x` with a logical vector `v`, R will
+extract the entries of `x` for which the corresponding entry of `v`
+(recycled if necessary) is `TRUE`:
+
+
+```r
+logical_indexing <- rnorm(12)
+logical_indexing
+```
+
+```
+##  [1] -0.297055910 -1.423666458 -0.216315264 -0.005881971 -0.859138737
+##  [6] -2.095621078 -0.265722558 -0.103193839 -0.799971279  0.514216402
+## [11] -0.071860783  0.700654880
+```
+
+```r
+logical_indexing[TRUE]
+```
+
+```
+##  [1] -0.297055910 -1.423666458 -0.216315264 -0.005881971 -0.859138737
+##  [6] -2.095621078 -0.265722558 -0.103193839 -0.799971279  0.514216402
+## [11] -0.071860783  0.700654880
+```
+
+```r
+logical_indexing[c(TRUE, FALSE, FALSE)]
+```
+
+```
+## [1] -0.297055910 -0.005881971 -0.265722558  0.514216402
+```
+
+Be careful: if you accidentally convert these logical values to
+integers, then R will use integer indexing:
+
+
+```r
+logical_indexing[1]
+```
+
+```
+## [1] -0.2970559
+```
+
+```r
+logical_indexing[c(1, 0, 0)]
+```
+
+```
+## [1] -0.2970559
+```
+
+```r
+all(c(1, 0, 0) == c(TRUE, FALSE, FALSE))
+```
+
+```
+## [1] TRUE
+```
+
+Beware of indexing by `0` in general. You might object that the last
+line is disingenuous, as we should be using `identical` or perhaps
+`all.equal`:
+
+
+```r
+list(identical(c(1, 0, 0), c(TRUE, FALSE, FALSE)),
+     all.equal(c(1, 0, 0), c(TRUE, FALSE, FALSE)))
+```
+
+```
+## [[1]]
+## [1] FALSE
+## 
+## [[2]]
+## [1] "Modes: numeric, logical"              
+## [2] "target is numeric, current is logical"
+```
+
+Fair enough. So `TRUE == 1`, but `TRUE` and `1` are not identical, nor
+are they "nearly equal."
+
 ### Encoding
 
 Whenever reading or writing data, make sure to specify the encoding
@@ -408,7 +494,7 @@ str(get("garbage", environment(test_accum)))
 ```
 
 ```
-##  num [1:65536] -0.29706 -1.42367 -0.21632 -0.00588 -0.85914 ...
+##  num [1:65536] -0.377 -0.685 0.831 1.51 0.556 ...
 ```
 
 The true size is exposed with `serialize`:
@@ -458,13 +544,13 @@ list(array_frame[1, "m"], array_frame$m[1, , ])
 
 ```
 ## [[1]]
-## [1] 1.21206
+## [1] -1.202653
 ## 
 ## [[2]]
 ##            [,1]       [,2]
-## [1,]  1.2120604 -0.8278234
-## [2,]  0.3467810  2.1007886
-## [3,] -0.1019131  0.3676326
+## [1,] -1.2026530 -0.7556250
+## [2,] -0.3581968 -0.9711227
+## [3,] -0.3830408 -0.6716219
 ```
 
 The `dplyr` package will not let you work with these exotic data
@@ -481,9 +567,9 @@ array_frame[1, "m"]
 ```
 ## [[1]]
 ##            [,1]       [,2]
-## [1,]  1.2120604 -0.8278234
-## [2,]  0.3467810  2.1007886
-## [3,] -0.1019131  0.3676326
+## [1,] -1.2026530 -0.7556250
+## [2,] -0.3581968 -0.9711227
+## [3,] -0.3830408 -0.6716219
 ```
 
 In general, lists in data frames are a very useful idiom. However, in

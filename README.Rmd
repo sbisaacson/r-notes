@@ -65,6 +65,40 @@ following invocations of `diag`:
 list(diag(3), diag(3, 4), diag(c(3, 4)))
 ```
 
+### Indexing
+
+If `x` is a vector and you index `x` with a logical vector `v`, R will
+extract the entries of `x` for which the corresponding entry of `v`
+(recycled if necessary) is `TRUE`:
+
+```{r indexing-pitfall}
+logical_indexing <- rnorm(12)
+logical_indexing
+logical_indexing[TRUE]
+logical_indexing[c(TRUE, FALSE, FALSE)]
+```
+
+Be careful: if you accidentally convert these logical values to
+integers, then R will use integer indexing:
+
+```{r indexing-pitfall-2}
+logical_indexing[1]
+logical_indexing[c(1, 0, 0)]
+all(c(1, 0, 0) == c(TRUE, FALSE, FALSE))
+```
+
+Beware of indexing by `0` in general. You might object that the last
+line is disingenuous, as we should be using `identical` or perhaps
+`all.equal`:
+
+```{r indexing-pitfall-3}
+list(identical(c(1, 0, 0), c(TRUE, FALSE, FALSE)),
+     all.equal(c(1, 0, 0), c(TRUE, FALSE, FALSE)))
+```
+
+Fair enough. So `TRUE == 1`, but `TRUE` and `1` are not identical, nor
+are they "nearly equal."
+
 ### Encoding
 
 Whenever reading or writing data, make sure to specify the encoding
